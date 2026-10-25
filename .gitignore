@@ -1,0 +1,10 @@
+# OS junk
+.DS_Store
+*.swp
+
+# Local plan (symlink into the plans store)
+/plan
+
+# Generated artifacts and temp
+.artifacts/
+tmp/
