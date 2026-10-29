@@ -8,3 +8,4 @@
 # Generated artifacts and temp
 .artifacts/
 tmp/
+__pycache__/
