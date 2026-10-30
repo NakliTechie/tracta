@@ -11,6 +11,7 @@ CPU only (--device none, no op offload), so no GPU turn is needed.
 import argparse
 import json
 import os
+import socket
 import subprocess
 import time
 import urllib.request
@@ -59,6 +60,10 @@ def start_server(model, port, threads, parallel, log):
     cmd = ["llama-server", "-m", model, *placement,
            "--host", "127.0.0.1", "--port", str(port), "--jinja", "-c", str(2048 * parallel),
            "--parallel", str(parallel), "-t", str(threads)]
+    # Refuse a busy port up front: a server already there would answer /health for us.
+    with socket.socket() as probe:
+        if probe.connect_ex(("127.0.0.1", port)) == 0:
+            raise RuntimeError(f"port {port} is already in use")
     proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(120):
         if proc.poll() is not None:

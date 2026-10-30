@@ -74,7 +74,17 @@ def score_open(records, scorer_dir, cache):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    key = hashlib.sha256(json.dumps([os.path.realpath(scorer_dir), "float32"] +
+    import transformers
+
+    # The key covers the scorer's files (weights, tokenizer, config), library versions, dtype and every
+    # (prompt, text), so a changed scorer or answer set can never reuse old scores.
+    files = hashlib.sha256()
+    for f in sorted(os.listdir(scorer_dir)):
+        if f.endswith((".safetensors", ".json", ".txt", ".model")):
+            with open(os.path.join(scorer_dir, f), "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    files.update(block)
+    key = hashlib.sha256(json.dumps([files.hexdigest(), torch.__version__, transformers.__version__, "float32"] +
                                     [[r["prompt"], r["text"]] for r in records]).encode()).hexdigest()
     if os.path.exists(cache):
         with open(cache) as f:

@@ -1,76 +1,82 @@
 <h1 align="center">tracta</h1>
 
-<p align="center"><b>Checks you run yourself to see whether a model provider still serves the model it promised, and research on reading which parts of a model carry a behaviour.</b></p>
+<p align="center"><b>Check whether your model provider still serves the model it promised, from its answers alone.</b></p>
 
-<p align="center">Runs on your own machine. No account, no server, no telemetry.</p>
+<p align="center">One file. Python 3.10+, no other dependencies. No account, no server, no telemetry.</p>
 
 <p align="center">
-  <img alt="status: research" src="https://img.shields.io/badge/status-research-52514e?style=flat-square">
-  <img alt="models tested: 10" src="https://img.shields.io/badge/models%20tested-10-52514e?style=flat-square">
+  <img alt="status: research release" src="https://img.shields.io/badge/status-research%20release-52514e?style=flat-square">
+  <img alt="dependencies: none" src="https://img.shields.io/badge/dependencies-none-52514e?style=flat-square">
   <img alt="account: none" src="https://img.shields.io/badge/account-none-52514e?style=flat-square">
 </p>
 
 ## Install
 
-| Need | Command |
+| Way | Command |
 |---|---|
-| llama.cpp (macOS, Linux) | `brew install llama.cpp` |
-| Python 3.12 packages | `pip install numpy scipy torch transformers matplotlib "gguf>=0.19"` |
-| The pinned model files | `python experiments/drift-calibration/models.py fetch /path/to/models` |
+| Single file | `sh scripts/build-pyz.sh`, then run `./dist/tracta.pyz` |
+| pipx | `pipx install git+https://github.com/NakliTechie/tracta` |
+| From a clone | `python3 -m tracta` |
 
-`models.py fetch` downloads the 24 published GGUF files listed in `models.json` at their pinned commits and checks every SHA-256. Then run one family: the provider serves a published Q8_0, and the script plants its published Q4_K_M and a swap.
+Watch a provider. Record a baseline on two days you trust, then check on any later day. Each check writes a report to `~/.tracta/<name>/reports/`:
 
 ```bash
-sh experiments/drift-calibration/campaign_family.sh /path/to/models work/gemma-3-1b gemma-3-1b/gemma-3-1b-it-Q8_0.gguf gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf gemma-3-270m/gemma-3-270m-it-Q8_0.gguf
+tracta baseline --name myprovider --endpoint https://api.example.com/v1 --model some-model --key-env EXAMPLE_API_KEY
+tracta baseline --name myprovider          # a second baseline, ideally on another day
+tracta check --name myprovider             # exit 0 no change, 2 changed, 3 no verdict
 ```
 
-It needs no GPU and no API key, because the "provider" is a local server. `TRACTA_DEVICE=MTL0` serves on Metal instead of CPU.
+An example report, from a local server switched to a 4-bit copy, is in [`docs/example-report.md`](docs/example-report.md). Any OpenAI-compatible chat endpoint works. A run is 436 short questions at temperature 0 and up to 16 tokens each. The API key stays in your environment, and nothing but the questions goes to the endpoint you name.
 
 ## Why
 
-You pay a provider for model X and see only its answers. On a busy day it can serve a 4-bit copy, a smaller sibling, or another model, and the bill stays the same. A weight hash cannot help, because you never see the weights.
+You pay a provider for model X and see only its answers. On a busy day it can serve a 4-bit copy, a smaller sibling or another model, and the bill stays the same. A weight hash cannot help, because you never see the weights.
 
-tracta asks the provider fixed questions on days you trust, keeps the answers as your baseline, and later checks whether new answers still match. It reports a detection with a measured false-alarm rate, never proof. A provider that recognises probe traffic can serve the real model to the probes, so a released tool must make probes look like ordinary use.
+tracta asks short factual questions near the edge of what a model knows. A swapped or quantised model gives different answers to many of them. tracta compares today's answers with your baselines and reports a change only when it exceeds the provider's own day-to-day noise, with a stated false-alarm rate.
 
 ## Results
 
-![Per family, the share of 436 greedy answers that changed: unchanged reruns 0–0.5%, a second engine 10–15%, the published Q4_K_M 4.6–75%, a swapped model 45–97%](experiments/drift-calibration/results/2026-10-30/b2-families.png)
+![Per family, the share of 436 greedy answers that changed: unchanged reruns 0–0.5%, a second engine 10–15% where measured, the published Q4_K_M 4.6–75%, a swapped model 45–97%](experiments/drift-calibration/results/2026-10-30/b2-families.png)
 
-Across ten published models from 0.35B to 4B, a swap to the family's Q4_K_M changed 4.6–75% of 436 short greedy answers, and a swap to another model changed 45–97%. The same file served again changed 0–0.5%, and served by a second engine 10–15%. One case is unresolved: Qwen3.5-4B's Q4_K_M moved only 4.6%, and its second-engine noise was not measured. Reproduce with `python experiments/drift-calibration/plot_families.py experiments/drift-calibration/results/2026-10-30 out.png`. Raw answers: [`runs-families.jsonl.gz`](experiments/drift-calibration/results/2026-10-30/runs-families.jsonl.gz).
+Across ten published models from 0.35B to 4B, serving the family's published Q4_K_M changed 4.6–75% of these answers, and serving another model changed 45–97%. Serving the same file again changed 0–0.5%. Serving it through a second inference engine changed 10–15%, measured for four of the ten families. One case is unresolved: Qwen3.5-4B's Q4_K_M moved only 4.6%, and its second-engine noise was not measured. These are one campaign per family on local servers, not hosted APIs. Reproduce with `python experiments/drift-calibration/plot_families.py experiments/drift-calibration/results/2026-10-30 out.png`; raw answers in [`runs-families.jsonl.gz`](experiments/drift-calibration/results/2026-10-30/runs-families.jsonl.gz).
 
-## The three checks
+## How a check decides
 
-- **Knowledge-boundary answers (B2).** Greedy answers to short facts and sums near the edge of what the model knows. It is the strongest check here: it separated every planted change from its null.
-- **Rank uniformity (B1).** Each new answer is ranked among your baseline answers to the same prompt, under one fixed small scorer model. Its false-alarm rate held at 0–8.8% across ten families. With a scorer from another family it catches cross-family swaps (85–100% at 25 prompts) but not quantisation or smaller siblings. With the served model as scorer it caught Q4_K_M 98.8–100% of the time.
-- **Single-token fingerprint (F1).** First-token distributions on 40 one-word prompts. It needs an API that returns log-probabilities, and a second engine in its null to mean anything.
+tracta anchors on your first baseline and compares two runs with it, question by question: today's run and your latest other baseline. If the provider has not changed, those two runs are interchangeable. So on questions where exactly one of them moved, each is equally likely to be the one. An exact sign test on those questions gives the p-value, with no assumption that all questions are equally noisy.
 
-Per-family tables with exact intervals: [`report-small.md`](experiments/drift-calibration/results/2026-10-30/report-small.md) and [`report-4b.md`](experiments/drift-calibration/results/2026-10-30/report-4b.md).
+Check number k may spend α·6/(π²k²) of a total false-alarm budget α, 0.05 by default. Those shares add up to α over any number of checks, so checking daily does not raise the chance of a false alarm above α. The report shows the budget spent.
 
-## Also in this repo
+## What it cannot tell you
 
-The wider question is which component of a model (a neuron, a direction, an expert) carries a behaviour. Two tracks are on paper and not yet run:
-- tamper checks for runtime steering and abliteration;
-- expert-path attribution on existing open mixture-of-experts models, labelled by topic.
+- **Why the answers changed.** An announced model update, a new default system prompt or new sampling settings also count as a change.
+- **What a probe-aware provider serves.** A provider that recognises tracta's requests can serve the real model to them. Each user's questions come from a private seed, which makes that harder, not impossible.
+- **Changes that spare short factual answers.** They are invisible to this check.
+- **Changes before your first baseline.** tracta compares only with your own baselines.
+
+## Research behind it
+
+`experiments/drift-calibration/` holds the experiments: three statistics (B2, used here; a rank test, B1; a token fingerprint, F1), ten model families, a second inference engine, and every model file pinned in `models.json`. Two further tracks are on paper and not yet run: tamper checks for runtime steering and abliteration, and expert-path attribution in mixture-of-experts models.
 
 ## Commands
 
 ```bash
-python experiments/drift-calibration/models.py fetch DIR                   # pinned published GGUFs, SHA-256 checked
-sh experiments/drift-calibration/campaign_family.sh DIR WORK BASE DOWN SWAP   # one family on llama-server
-python experiments/drift-calibration/collect_hf.py --model-dir D --gguf F --tag q8-hfday1 --sets boundary,tokens --out R   # second engine
-python experiments/drift-calibration/analyse.py --runs R... --scorer HF_DIR --out results.json   # B1, B2, F1
-python experiments/drift-calibration/report.py OUT.md WORK/*/results.json     # per-family table
+tracta baseline --name N --endpoint URL --model M [--key-env VAR] [--logprobs] [--rps 2]   # record a baseline
+tracta check --name N [--alpha 0.05]                                                       # test and write a report
+tracta status --name N                                                                     # show a watch
+sh scripts/build-pyz.sh                                                                    # build dist/tracta.pyz
 ```
+
+`--logprobs` also records 40 one-word probes, so the report can show the token fingerprint as supporting evidence; only the sign test decides. `--extra-body JSON` passes provider-specific fields.
 
 ## Verify it yourself
 
 ```bash
-python experiments/drift-calibration/models.py verify DIR
-python -c "import json; r=json.load(open('experiments/drift-calibration/results/2026-10-30/families/gemma-3-1b/results.json')); print({t: round(v['changed_all']['rate'], 3) for t, v in r['b2']['arms'].items()})"
+python3 -m unittest discover -s tests
+sh tests/e2e_local.sh /path/to/models /tmp/tracta-e2e
 ```
 
-`verify` fails unless every model file matches the hash in `models.json`, which is the published Hugging Face hash. The second command prints Gemma 3 1B's B2 shares: 0.0 for the same-engine reruns, 0.154 for the second engine, 0.555 for Q4_K_M and 0.968 for the swap. Analysis uses fixed seeds, so a rerun of `analyse.py` on the same answers gives the same numbers. Every result here is one campaign per family; no repeat campaigns ran.
+The unit tests check the sign test and exact intervals against SciPy, the false-alarm budget, and the verdicts. The end-to-end script drives the real CLI against local llama-server providers built from the pinned files. It expects no verdict from one baseline, no change on the unchanged Q8_0, and "changed" for the published Q4_K_M and for a swap to Gemma 3 270M.
 
 ## License
 
-No license file yet. Code under `experiments/`, data under `experiments/*/results/`. Plans and the research charter live in a private plans store, not in this repo.
+No license file yet. Plans and the research charter live in a private plans store, not in this repo.

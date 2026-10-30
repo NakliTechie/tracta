@@ -12,7 +12,8 @@ arithmetic differs. Loading a published GGUF's tokenizer in transformers is not 
 the chat template and splits added tokens such as <think> into text.
 
 --batch > 1 runs open and boundary prompts in left-padded batches, which changes the arithmetic
-the way server-side batching does. Needs a gguf package that works with NumPy 2 (the project .venv).
+the way server-side batching does. Sampling is seeded once per batch, so a sampled answer from a
+batch of 8 can be reproduced only by rerunning its whole batch; greedy answers do not depend on it. Needs a gguf package that works with NumPy 2 (the project .venv).
 """
 import argparse
 import json
@@ -103,9 +104,9 @@ def run(args):
     if "boundary" in sets:
         work.append(("boundary", BOUNDARY, 0, probes.boundary_prompts()))
     token_items = probes.token_probes() if "tokens" in sets else []
+    memory_gate(args.tag, os.path.join(os.path.dirname(os.path.abspath(args.out)), "gate.log"))
     ids = prompt_ids(args, {p["prompt"] for _, _, _, items in work for p in items} | {p["prompt"] for p in token_items})
 
-    memory_gate(args.tag, os.path.join(os.path.dirname(os.path.abspath(args.out)), "gate.log"))
     tok = AutoTokenizer.from_pretrained(args.model_dir, gguf_file=args.gguf)  # used for decoding only
     model = AutoModelForCausalLM.from_pretrained(args.model_dir, gguf_file=args.gguf, dtype=torch.float32).eval()
     base = dict(tag=args.tag, model=f"{args.model_dir}/{args.gguf}", build="transformers-cpu-fp32")
