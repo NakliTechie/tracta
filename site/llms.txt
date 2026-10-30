@@ -1,0 +1,30 @@
+# tracta
+
+> tracta checks whether a model provider still serves the model it promised, from its answers alone. It asks the same short questions on different days and reports a change only when the answers move more than the provider's own noise, at a stated false-alarm rate. One static binary for macOS, Linux and Windows; MIT licence; no account, server or telemetry.
+
+- Source, binaries and documentation: https://github.com/NakliTechie/tracta
+- Latest release: https://github.com/NakliTechie/tracta/releases/latest
+- Example report: https://github.com/NakliTechie/tracta/blob/main/docs/example-report.md
+- Example question file: https://github.com/NakliTechie/tracta/blob/main/docs/questions-example.jsonl
+
+## Commands
+
+- `tracta baseline --name N --endpoint URL --model M [--api openai|anthropic] [--key-env VAR] [--extra-body JSON] [--questions FILE] [--logprobs]` creates a watch and records baseline 1. Record a second baseline later, ideally on another day, with `tracta baseline --name N`.
+- `tracta check --name N [--alpha 0.05] [--model M]` asks the questions again, compares, and writes `reports/check-K.md` and `reports/check-K.json` in the watch folder.
+- `tracta status --name N` prints the watch as JSON: name, api, endpoint, model, questions, question_source, baselines, checks, folder.
+- Every command takes `--root DIR` (default `~/.tracta`). The API key is read from the environment variable named by `--key-env`.
+
+## Exit codes of `tracta check`
+
+- 0: no change detected
+- 2: changed
+- 3: no verdict (for example only one baseline, so the provider's own noise is unknown)
+- 1: error
+
+## Report JSON fields (`check-K.json`)
+
+`verdict` ("changed", "no change detected" or "no verdict"), `reason`, `check_number`, `test_number`, `items`, `changed`, `changed_rate`, `changed_ci` (95% Clopper-Pearson), `null_changed`, `null_items`, `null_rate`, `null_ci` (the provider's own noise, baseline 2 against baseline 1), `null_run`, `only_check`, `only_noise` (the discordant counts of the sign test), `p_value` (one-sided exact sign test; null when no test ran), `alpha_total`, `alpha_this_check` (α·6/(π²k²)), `alpha_spent`, `baseline_runs`, `examples` (`id`, `prompt`, `baseline`, `now`), `fingerprint` (`probes`, `median_jsd_check`, `median_jsd_noise`; supporting evidence only, or null).
+
+## Own questions
+
+`--questions FILE` (v0.3.0 and later) takes a JSON Lines file with one `{"id": ..., "prompt": ...}` per line when the watch is created; an `answer` field is ignored. Ask for short answers: tracta reads at most 16 tokens and compares the first number, else the first word.
