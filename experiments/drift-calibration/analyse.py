@@ -1,62 +1,103 @@
-"""Score a calibration campaign: B1 rank uniformity, B2 knowledge-boundary drift, F1 single-token JSD.
+"""Score calibration campaigns: B1 rank uniformity, B2 knowledge-boundary drift, F1 single-token fingerprint.
 
-    python analyse.py --runs run.jsonl --scorer /path/to/qwen3-0.6b-hf --out results.json
+    python analyse.py --runs runs.jsonl.gz runs-engine2.jsonl --scorer /path/to/qwen3-0.6b-hf --out results.json
 
-Arms are named by tag. Tags starting "q8-" are the unchanged model (the null); "q4-" is the planted
-downgrade; "bf16" is the same model at higher precision; "reference" holds B1's reference samples.
-The scorer is a fixed function of text (summed log-probability of the answer under the published
-bf16 weights, run on CPU); B1 is valid for any fixed scorer because provider and reference samples
-are compared with the same function.
+Tags name arms: "<model>-<variant>", where model is q8, q4 or bf16 and a variant containing "hf"
+means the transformers engine (collect_hf.py); everything else is llama-server. "reference" holds
+B1's reference bank.
+
+Every rate is over fresh, independent audits. An audit is a disjoint chunk of n prompts from one
+answer sample of one arm (prompt order fixed by a seeded shuffle), so no answer is used twice
+within a rate. Intervals are exact (Clopper-Pearson). Rates are conditional on the fixed
+200-prompt probe set and the frozen reference bank, which is the setting a user's tool runs in.
+
+B1's scorer is the summed log-probability of the answer under the published weights (float32, CPU).
+Any fixed scorer keeps the test valid, provided provider and reference answers come from the same
+per-prompt distribution under the same template, tokenizer and sampling settings.
 """
 import argparse
+import gzip
+import hashlib
 import itertools
 import json
+import os
 import re
 from collections import defaultdict
 
 import numpy as np
-from scipy.stats import cramervonmises
+from scipy.stats import binomtest, cramervonmises
 
-RNG = np.random.default_rng(20261029)
+SEED = 20261029
+# Each statistic restarts this generator from SEED, so adding rows for one statistic (say a second
+# engine's B2 answers) never changes another's random draws.
+RNG = np.random.default_rng(SEED)
 ALPHA = 0.05
-NS = [10, 25, 50, 100, 200]
-BOOT = 1000
+AUDIT_SIZES = [10, 25, 50]
+DILUTION = [0.1, 0.3, 0.5, 1.0]
 
 
-def load(path):
-    with open(path) as f:
-        return [json.loads(line) for line in f]
+def load(paths):
+    rows = []
+    for path in paths:
+        opener = gzip.open if path.endswith(".gz") else open
+        with opener(path, "rt") as f:
+            rows += [json.loads(line) for line in f]
+    return rows
+
+
+def model_of(tag):
+    return tag.split("-")[0]
+
+
+def engine_of(tag):
+    return "transformers" if "-hf" in tag else "llama.cpp"
+
+
+def pair_kind(a, b):
+    if model_of(a) != model_of(b):
+        return "cross-model"
+    return "same-engine" if engine_of(a) == engine_of(b) else "cross-engine"
+
+
+def rate(hits, n):
+    """Observed rate with an exact 95% interval."""
+    if n == 0:
+        return None
+    ci = binomtest(hits, n).proportion_ci(method="exact")
+    return {"rate": hits / n, "lo": ci.low, "hi": ci.high, "k": hits, "n": n}
 
 
 # ---------- B1: rank uniformity ----------
 
-def score_open(records, scorer_dir, cache, batch=16):
-    """Summed log-probability of each answer under the scorer, cached to `cache` (one float per line)."""
-    import os
-
+def score_open(records, scorer_dir, cache):
+    """Summed answer log-probability under the scorer. Cached by a hash of scorer, dtype and every (prompt, text)."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    key = hashlib.sha256(json.dumps([os.path.realpath(scorer_dir), "float32"] +
+                                    [[r["prompt"], r["text"]] for r in records]).encode()).hexdigest()
     if os.path.exists(cache):
         with open(cache) as f:
-            done = [float(x) for x in f]
-        if len(done) == len(records):
-            return done
+            c = json.load(f)
+        if c["key"] == key:
+            return c["scores"], c["boundary_mismatches"]
     torch.set_num_threads(8)
     tok = AutoTokenizer.from_pretrained(scorer_dir)
-    # float32: bf16 matmuls on this CPU ran several times slower in the first campaign.
     model = AutoModelForCausalLM.from_pretrained(scorer_dir, dtype=torch.float32).eval()
-    pairs = []
+    pairs, mismatches = [], 0
     for r in records:
         prefix = tok.apply_chat_template([{"role": "user", "content": r["prompt"]}], tokenize=False,
                                          add_generation_prompt=True, enable_thinking=False)
         p_ids = tok(prefix, add_special_tokens=False)["input_ids"]
         a_ids = tok(r["text"], add_special_tokens=False)["input_ids"]
+        # The answer is scored as its own token sequence after the prompt; count where that differs
+        # from tokenizing the whole conversation, which would shift the scored positions.
+        mismatches += tok(prefix + r["text"], add_special_tokens=False)["input_ids"] != p_ids + a_ids
         pairs.append((p_ids, a_ids))
     scores = []
     with torch.no_grad():
-        for i in range(0, len(pairs), batch):
-            chunk = pairs[i:i + batch]
+        for i in range(0, len(pairs), 16):
+            chunk = pairs[i:i + 16]
             seqs = [p + a for p, a in chunk]
             width = max(map(len, seqs))
             ids = torch.full((len(seqs), width), tok.pad_token_id or 0)
@@ -73,66 +114,80 @@ def score_open(records, scorer_dir, cache, batch=16):
                 pos = torch.arange(len(p) - 1, len(p) + len(a) - 1)
                 logp = torch.log_softmax(model.lm_head(hidden[k, pos]), -1)
                 scores.append(float(logp[torch.arange(len(a)), torch.tensor(a)].sum()))
-            if (i // batch) % 25 == 0:
+            if (i // 16) % 50 == 0:
                 print(f"scored {len(scores)}/{len(pairs)}", flush=True)
     with open(cache, "w") as f:
-        f.write("\n".join(map(str, scores)) + "\n")
-    return scores
+        json.dump({"key": key, "scores": scores, "boundary_mismatches": int(mismatches)}, f)
+    return scores, int(mismatches)
 
 
-def ranks(provider_scores, ref_scores):
+def rank(score, ref_scores):
     """Randomised rank percentile in (0, 1); exactly uniform when provider and reference share a distribution."""
     ref = np.asarray(ref_scores)
-    below = np.sum(ref < provider_scores)
-    ties = np.sum(ref == provider_scores)
-    return (below + RNG.uniform(0, ties + 1)) / (len(ref) + 1)
+    return (np.sum(ref < score) + RNG.uniform(0, np.sum(ref == score) + 1)) / (len(ref) + 1)
 
 
 def cvm_p(u):
     return float(cramervonmises(u, "uniform").pvalue)
 
 
-def rejection_rate(u_by_prompt, n):
-    keys = list(u_by_prompt)
-    hits = 0
-    for _ in range(BOOT):
-        pick = RNG.choice(len(keys), size=n, replace=False)
-        hits += cvm_p(np.array([u_by_prompt[keys[i]] for i in pick])) < ALPHA
-    return hits / BOOT
+def audits(samples, order, n):
+    """Disjoint audits of n prompts: for each answer sample j, consecutive chunks of the fixed prompt order."""
+    out = []
+    for j in sorted(samples):
+        pids = [p for p in order if p in samples[j]]
+        out += [[(j, p) for p in pids[i:i + n]] for i in range(0, len(pids) - n + 1, n)]
+    return out
 
 
 def b1(rows, scorer, cache):
+    global RNG
+    RNG = np.random.default_rng(SEED)
     open_rows = [r for r in rows if r["set"] == "open"]
-    scores = score_open(open_rows, scorer, cache)
+    scores, mismatches = score_open(open_rows, scorer, cache)
     ref = defaultdict(list)
-    prov = defaultdict(dict)
+    u = defaultdict(lambda: defaultdict(dict))  # tag -> sample j -> prompt -> rank
+    raw = defaultdict(lambda: defaultdict(dict))
     for r, s in zip(open_rows, scores):
         if r["tag"] == "reference":
             ref[r["id"]].append(s)
         else:
-            prov[r["tag"]][r["id"]] = s
-    u = {tag: {pid: ranks(s, ref[pid]) for pid, s in d.items()} for tag, d in prov.items()}
-    out = {"reference_samples_per_prompt": int(np.median([len(v) for v in ref.values()])), "arms": {}}
-    for tag, d in sorted(u.items()):
-        vals = np.array(list(d.values()))
-        out["arms"][tag] = {"n": len(vals), "median_u": float(np.median(vals)), "cvm_p_all": cvm_p(vals),
-                            "reject_rate_by_n": {n: rejection_rate(d, n) for n in NS if n <= len(vals)}}
-    # Routing dilution: each prompt's answer comes from the downgrade with probability p.
-    nulls = sorted(t for t in u if t.startswith("q8-day"))
-    downs = sorted(t for t in u if t.startswith("q4-day"))
+            raw[r["tag"]][r["j"]][r["id"]] = s
+    for tag in raw:
+        for j in raw[tag]:
+            u[tag][j] = {p: rank(s, ref[p]) for p, s in raw[tag][j].items()}
+    order = sorted(ref)
+    RNG.shuffle(order)
+    out = {"reference_samples_per_prompt": int(np.median([len(v) for v in ref.values()])),
+           "scorer_boundary_mismatches": mismatches, "scored_answers": len(open_rows), "arms": {}}
+    for tag in sorted(u):
+        allu = np.array([x for j in u[tag] for x in u[tag][j].values()])
+        arm = {"answers": len(allu), "median_rank": float(np.median(allu)), "reject": {}}
+        for n in AUDIT_SIZES:
+            a = audits(u[tag], order, n)
+            hits = sum(cvm_p(np.array([u[tag][j][p] for j, p in audit])) < ALPHA for audit in a)
+            arm["reject"][n] = rate(int(hits), len(a))
+        out["arms"][tag] = arm
+    # Dilution: pair each fresh audit of a changed model with a fresh audit of the unchanged one on
+    # the same engine and prompts; each prompt's answer comes from the changed model with probability p.
     dil = {}
-    for p in [0.1, 0.3, 0.5, 1.0]:
-        rates = {}
-        for n in NS:
-            hits = 0
-            for b in range(BOOT):
-                null_tag, down_tag = nulls[b % len(nulls)], downs[b % len(downs)]
-                pids = RNG.choice(sorted(u[null_tag]), size=n, replace=False)
-                vals = [u[down_tag][k] if RNG.random() < p else u[null_tag][k] for k in pids]
-                hits += cvm_p(np.array(vals)) < ALPHA
-            rates[n] = hits / BOOT
-        dil[p] = rates
-    out["dilution_reject_rate"] = dil
+    for change, (null, down) in {"q4 on llama.cpp": ("q8-audit", "q4-audit"),
+                                 "swap on llama.cpp": ("q8-audit", "swap-audit"),
+                                 "q4 on transformers": ("q8-hfaudit", "q4-hfaudit")}.items():
+        if null not in u or down not in u:
+            continue
+        engine_tag = change
+        dil[engine_tag] = {}
+        for p in DILUTION:
+            dil[engine_tag][p] = {}
+            for n in AUDIT_SIZES:
+                a = [x for x in audits(u[down], order, n) if all(q in u[null].get(j, {}) for j, q in x)]
+                hits = 0
+                for audit in a:
+                    vals = [u[down][j][q] if RNG.random() < p else u[null][j][q] for j, q in audit]
+                    hits += cvm_p(np.array(vals)) < ALPHA
+                dil[engine_tag][p][n] = rate(int(hits), len(a))
+    out["dilution"] = dil
     return out
 
 
@@ -148,14 +203,6 @@ def norm(text):
     return w[0] if w else t
 
 
-def boot_frac(flags):
-    flags = np.asarray(flags, float)
-    if len(flags) == 0:
-        return [None, None, None]
-    bs = RNG.choice(flags, size=(BOOT, len(flags))).mean(1)
-    return [float(flags.mean()), float(np.quantile(bs, 0.025)), float(np.quantile(bs, 0.975))]
-
-
 def b2(rows, baseline="q8-day1"):
     ans = defaultdict(dict)
     gold = {}
@@ -165,13 +212,16 @@ def b2(rows, baseline="q8-day1"):
             gold[r["id"]] = r["answer"].lower()
     base = ans[baseline]
     wrong = [k for k in base if base[k] != gold[k]]
-    out = {"baseline": baseline, "items": len(base), "baseline_wrong": len(wrong), "arms": {}}
+    out = {"baseline": baseline, "items": len(base), "baseline_wrong": len(wrong), "arms": {}, "pairs": {}}
     for tag, a in sorted(ans.items()):
         out["arms"][tag] = {
             "accuracy": float(np.mean([a[k] == gold[k] for k in a])),
-            "changed_all": boot_frac([a[k] != base[k] for k in base]),
-            "changed_on_baseline_wrong": boot_frac([a[k] != base[k] for k in wrong]),
+            "changed_all": rate(sum(a[k] != base[k] for k in base), len(base)),
+            "changed_on_baseline_wrong": rate(sum(a[k] != base[k] for k in wrong), len(wrong)),
         }
+    for x, y in itertools.combinations(sorted(ans), 2):
+        out["pairs"][f"{x}|{y}"] = {"kind": pair_kind(x, y),
+                                    "changed_all": rate(sum(ans[x][k] != ans[y][k] for k in base), len(base))}
     return out
 
 
@@ -195,53 +245,61 @@ def jsd(p, q):
     return 0.5 * kl(a, m) + 0.5 * kl(b, m)
 
 
-def f1(rows):
+def eer(same, cross):
+    """Equal error rate of the rule 'call it a different model when the distance exceeds t'."""
+    same, cross = np.sort(same), np.sort(cross)
+    best = 1.0
+    for t in np.unique(np.concatenate([same, cross, [-1.0]])):
+        fpr = np.mean(same > t)
+        fnr = np.mean(cross <= t)
+        best = min(best, max(fpr, fnr))
+    return float(best)
+
+
+def f1(rows, draws=2000):
+    global RNG
+    RNG = np.random.default_rng(SEED)
     d = defaultdict(dict)
     for r in rows:
         if r["set"] == "tokens":
             d[r["tag"]][r["id"]] = dist(r["top"])
     tags = sorted(d)
     probes = sorted(set.intersection(*(set(d[t]) for t in tags)))
-    family = lambda t: t.split("-")[0]
+    per = {}
     pairs = {}
     for a, b in itertools.combinations(tags, 2):
-        per = np.array([jsd(d[a][k], d[b][k]) for k in probes])
-        pairs[f"{a}|{b}"] = {"within_model": family(a) == family(b), "mean_jsd": float(per.mean()),
-                             "max_probe_jsd": float(per.max()), "per_probe": per.tolist()}
-    within = [v["mean_jsd"] for v in pairs.values() if v["within_model"]]
-    cross = [v["mean_jsd"] for v in pairs.values() if not v["within_model"]]
-    # Probes needed: smallest k at which every cross-model pair's mean JSD over k random probes
-    # exceeds the largest within-model mean over all probes, in 95% of draws.
-    threshold = max(within) if within else 0.0
-    need = {}
-    for key, v in pairs.items():
-        if v["within_model"]:
-            continue
-        per = np.array(v["per_probe"])
-        for k in [1, 2, 3, 5, 8, 10, 20, 40]:
-            if k > len(per):
-                break
-            draws = np.array([per[RNG.choice(len(per), k, replace=False)].mean() for _ in range(BOOT)])
-            if np.mean(draws > threshold) >= 0.95:
-                need[key] = k
-                break
-        else:
-            need[key] = None
-    return {"probes": len(probes), "within_max": threshold, "within": within, "cross_min": min(cross) if cross else None,
-            "probes_needed": need, "pairs": {k: {x: y for x, y in v.items() if x != "per_probe"} for k, v in pairs.items()}}
+        v = np.array([jsd(d[a][k], d[b][k]) for k in probes])
+        per[(a, b)] = v
+        pairs[f"{a}|{b}"] = {"kind": pair_kind(a, b), "mean_jsd": float(v.mean()), "max_probe_jsd": float(v.max())}
+    same = [k for k in per if pair_kind(*k) != "cross-model"]
+    cross = [k for k in per if pair_kind(*k) == "cross-model"]
+    # The predeclared rule (hypotheses §7): equal error rate between same-model distances (any engine,
+    # any serving setting) and cross-model distances, for a check that averages k random probes.
+    # Reported per change being detected (q4 against q8, bf16 against q8, ...), because one pooled
+    # rate mixes an easy change with one that sits inside engine noise.
+    changes = defaultdict(list)
+    for a, b in cross:
+        changes["|".join(sorted({model_of(a), model_of(b)}))].append((a, b))
+    pick = lambda keys, k: np.array([per[keys[RNG.integers(len(keys))]][RNG.choice(len(probes), k, replace=False)].mean()
+                                     for _ in range(draws)])
+    rule = {}
+    if same:
+        for change, keys in sorted(changes.items()):
+            rule[change] = {k: eer(pick(same, k), pick(keys, k)) for k in [1, 3, 5, 10, 40] if k <= len(probes)}
+    return {"probes": len(probes), "eer_by_change_and_probes": rule, "pairs": pairs,
+            "max_same_model_mean_jsd": max(pairs[f"{a}|{b}"]["mean_jsd"] for a, b in same) if same else None,
+            "min_cross_model_mean_jsd": min(pairs[f"{a}|{b}"]["mean_jsd"] for a, b in cross) if cross else None}
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--runs", required=True)
+    ap.add_argument("--runs", required=True, nargs="+", help="one or more runs files (.jsonl or .jsonl.gz)")
     ap.add_argument("--scorer", required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     rows = load(a.runs)
-    res = {"b2": b2(rows), "f1": f1(rows), "b1": b1(rows, a.scorer, a.out + ".scores")}
+    res = {"inputs": a.runs, "b2": b2(rows), "f1": f1(rows), "b1": b1(rows, a.scorer, a.out + ".scores.json")}
     with open(a.out, "w") as f:
         json.dump(res, f, indent=1)
-    print(json.dumps({"b2": res["b2"]["arms"], "f1_within_max": res["f1"]["within_max"],
-                      "f1_cross_min": res["f1"]["cross_min"], "f1_probes_needed": res["f1"]["probes_needed"],
-                      "b1": {t: {k: v for k, v in x.items()} for t, x in res["b1"]["arms"].items()},
-                      "b1_dilution": res["b1"]["dilution_reject_rate"]}, indent=1))
+    print(json.dumps({"b1": res["b1"]["arms"], "b1_dilution": res["b1"]["dilution"],
+                      "f1_eer": res["f1"]["eer_by_change_and_probes"]}, indent=1))

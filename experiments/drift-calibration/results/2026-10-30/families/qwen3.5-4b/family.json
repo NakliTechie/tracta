@@ -1,0 +1,1 @@
+{"base": "qwen3.5-4b/Qwen3.5-4B-Q8_0.gguf", "downgrade": "qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf", "swap": "published/qwen3.5-0.8b/Qwen3.5-0.8B-Q8_0.gguf"}

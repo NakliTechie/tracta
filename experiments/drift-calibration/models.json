@@ -1,0 +1,194 @@
+[
+ {
+  "name": "gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf",
+  "repo": "unsloth/gemma-3-1b-it-GGUF",
+  "file": "gemma-3-1b-it-Q4_K_M.gguf",
+  "revision": "f0b45be0aac41bd6a100a4b5734cad5f67255bfb",
+  "sha256": "8270790f3ab69fdfe860b7b64008d9a19986d8df7e407bb018184caa08798ebd",
+  "size": 806058272
+ },
+ {
+  "name": "gemma-3-1b/gemma-3-1b-it-Q8_0.gguf",
+  "repo": "unsloth/gemma-3-1b-it-GGUF",
+  "file": "gemma-3-1b-it-Q8_0.gguf",
+  "revision": "f0b45be0aac41bd6a100a4b5734cad5f67255bfb",
+  "sha256": "616dfb049ad14288d971d96f5ca4953fdebbf1e3cd407ad159f3bfd47090201d",
+  "size": 1069306400
+ },
+ {
+  "name": "gemma-3-270m/gemma-3-270m-it-Q4_K_M.gguf",
+  "repo": "unsloth/gemma-3-270m-it-GGUF",
+  "file": "gemma-3-270m-it-Q4_K_M.gguf",
+  "revision": "c90975dbd40c0c7b275fefaae758c3415c906238",
+  "sha256": "b1baabd6b729e4041822220d3e648e00d99cac5df86b10dffb77bcccf0688e39",
+  "size": 253115424
+ },
+ {
+  "name": "gemma-3-270m/gemma-3-270m-it-Q8_0.gguf",
+  "repo": "unsloth/gemma-3-270m-it-GGUF",
+  "file": "gemma-3-270m-it-Q8_0.gguf",
+  "revision": "c90975dbd40c0c7b275fefaae758c3415c906238",
+  "sha256": "d156a5159f2f79c1b1d53c7c1cc20f1ff28ab8d00f17a292620aad13399b9698",
+  "size": 291546144
+ },
+ {
+  "name": "lfm2.5-350m/LFM2.5-350M-Q4_K_M.gguf",
+  "repo": "LiquidAI/LFM2.5-350M-GGUF",
+  "file": "LFM2.5-350M-Q4_K_M.gguf",
+  "revision": "657e078c94084481950a2d555a941481f715536b",
+  "sha256": "7e6f72643caafc9a68256686638c4d7916f2cec76d1df478d4c3ddcd95a6aed4",
+  "size": 229312224
+ },
+ {
+  "name": "lfm2.5-350m/LFM2.5-350M-Q8_0.gguf",
+  "repo": "LiquidAI/LFM2.5-350M-GGUF",
+  "file": "LFM2.5-350M-Q8_0.gguf",
+  "revision": "657e078c94084481950a2d555a941481f715536b",
+  "sha256": "be036a757295e550098b85e13f6af2735d0fa73b41e1156a40c7d8e8e32a5766",
+  "size": 379217632
+ },
+ {
+  "name": "llama-3.2-1b/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+  "repo": "unsloth/Llama-3.2-1B-Instruct-GGUF",
+  "file": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+  "revision": "b69aef112e9f895e6f98d7ae0949f72ff09aa401",
+  "sha256": "3f5a22426976ab26cfe84dba63c1d08391717abb1af893e10f1b2968d862dcc1",
+  "size": 807694368
+ },
+ {
+  "name": "llama-3.2-1b/Llama-3.2-1B-Instruct-Q8_0.gguf",
+  "repo": "unsloth/Llama-3.2-1B-Instruct-GGUF",
+  "file": "Llama-3.2-1B-Instruct-Q8_0.gguf",
+  "revision": "b69aef112e9f895e6f98d7ae0949f72ff09aa401",
+  "sha256": "3f87a880027e7b9ea8e0da9e4009584336f352af444a0e6e5c20721ac4c7ffd1",
+  "size": 1321082528
+ },
+ {
+  "name": "qwen3-0.6b/Qwen3-0.6B-Q4_K_M.gguf",
+  "repo": "unsloth/Qwen3-0.6B-GGUF",
+  "file": "Qwen3-0.6B-Q4_K_M.gguf",
+  "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+  "sha256": "ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a",
+  "size": 396705472
+ },
+ {
+  "name": "qwen3-0.6b/Qwen3-0.6B-Q8_0.gguf",
+  "repo": "unsloth/Qwen3-0.6B-GGUF",
+  "file": "Qwen3-0.6B-Q8_0.gguf",
+  "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+  "sha256": "e150ed544dfe6016930c026a93913a5e3184181ebfe6ab2223ae01dd0491784c",
+  "size": 639447744
+ },
+ {
+  "name": "qwen3.5-0.8b/Qwen3.5-0.8B-Q4_K_M.gguf",
+  "repo": "unsloth/Qwen3.5-0.8B-GGUF",
+  "file": "Qwen3.5-0.8B-Q4_K_M.gguf",
+  "revision": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+  "sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+  "size": 532517120
+ },
+ {
+  "name": "qwen3.5-0.8b/Qwen3.5-0.8B-Q8_0.gguf",
+  "repo": "unsloth/Qwen3.5-0.8B-GGUF",
+  "file": "Qwen3.5-0.8B-Q8_0.gguf",
+  "revision": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+  "sha256": "0ad885ffd4bb022fc4f0d33a3308fa108ef8613159d3b3a67e23abca056b7a6c",
+  "size": 811843840
+ },
+ {
+  "name": "smollm2-1.7b/SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
+  "repo": "unsloth/SmolLM2-1.7B-Instruct-GGUF",
+  "file": "SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
+  "revision": "e933f1cdf73cc87cb67915bf5dd6ea81d36080ca",
+  "sha256": "61b6f90dd515fd3bffbd0f6ba716e87555dde77d9b0573a562c2c5e62afc4909",
+  "size": 1055609504
+ },
+ {
+  "name": "smollm2-1.7b/SmolLM2-1.7B-Instruct-Q8_0.gguf",
+  "repo": "unsloth/SmolLM2-1.7B-Instruct-GGUF",
+  "file": "SmolLM2-1.7B-Instruct-Q8_0.gguf",
+  "revision": "e933f1cdf73cc87cb67915bf5dd6ea81d36080ca",
+  "sha256": "0f3fb091804c48a561b42a4ca1be9ce2c353017187f74c48f52299cae790abe5",
+  "size": 1820414624
+ },
+ {
+  "name": "smollm2-360m/SmolLM2-360M-Instruct-Q4_K_M.gguf",
+  "repo": "unsloth/SmolLM2-360M-Instruct-GGUF",
+  "file": "SmolLM2-360M-Instruct-Q4_K_M.gguf",
+  "revision": "391ed11137586e383b1be0fab9acf01d282c2e11",
+  "sha256": "16c7f1667fea34bacad196a57b548effcb37614db4ab5677a20c8c7b823b9e63",
+  "size": 270590560
+ },
+ {
+  "name": "smollm2-360m/SmolLM2-360M-Instruct-Q8_0.gguf",
+  "repo": "unsloth/SmolLM2-360M-Instruct-GGUF",
+  "file": "SmolLM2-360M-Instruct-Q8_0.gguf",
+  "revision": "391ed11137586e383b1be0fab9acf01d282c2e11",
+  "sha256": "fcb111da119fa42ab856d491088a844b290579e9810bd0792252297d8c6cd7a8",
+  "size": 386404960
+ },
+ {
+  "name": "qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf",
+  "repo": "unsloth/Qwen3.5-4B-GGUF",
+  "file": "Qwen3.5-4B-Q4_K_M.gguf",
+  "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+  "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+  "size": 2740937888
+ },
+ {
+  "name": "qwen3.5-4b/Qwen3.5-4B-Q8_0.gguf",
+  "repo": "unsloth/Qwen3.5-4B-GGUF",
+  "file": "Qwen3.5-4B-Q8_0.gguf",
+  "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+  "sha256": "10cc391b403021dd11c614679d2fd92f611c3681d29e29651b717316965d61e1",
+  "size": 4482403488
+ },
+ {
+  "name": "phi-4-mini/Phi-4-mini-instruct-Q4_K_M.gguf",
+  "repo": "unsloth/Phi-4-mini-instruct-GGUF",
+  "file": "Phi-4-mini-instruct-Q4_K_M.gguf",
+  "revision": "78eb92a46fc37e6b524df991ed9aca9bc6aa7b80",
+  "sha256": "88c00229914083cd112853aab84ed51b87bdf6b9ce42f532d8c85c7c63b1730a",
+  "size": 2491874272
+ },
+ {
+  "name": "phi-4-mini/Phi-4-mini-instruct.Q8_0.gguf",
+  "repo": "unsloth/Phi-4-mini-instruct-GGUF",
+  "file": "Phi-4-mini-instruct.Q8_0.gguf",
+  "revision": "78eb92a46fc37e6b524df991ed9aca9bc6aa7b80",
+  "sha256": "26188c6050d525376a88b04514c236c5e28a36730f1e936f2a00314212b7ba42",
+  "size": 4084611040
+ },
+ {
+  "name": "llama-3.2-3b/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+  "repo": "unsloth/Llama-3.2-3B-Instruct-GGUF",
+  "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+  "revision": "e7d0997e49c9cb00d88b4c1a6a16aa894b0bbc31",
+  "sha256": "6c99cc00ae910f6a532a80022cb4bc1939094527a089c29294b841c0bd87f74d",
+  "size": 2019377600
+ },
+ {
+  "name": "llama-3.2-3b/Llama-3.2-3B-Instruct-Q8_0.gguf",
+  "repo": "unsloth/Llama-3.2-3B-Instruct-GGUF",
+  "file": "Llama-3.2-3B-Instruct-Q8_0.gguf",
+  "revision": "e7d0997e49c9cb00d88b4c1a6a16aa894b0bbc31",
+  "sha256": "f34112a11b7dad74ab517dedf6dcf00d624c9adac2dc0c72c719ca0478554ef2",
+  "size": 3421898816
+ },
+ {
+  "name": "smollm3-3b/SmolLM3-3B-Q4_K_M.gguf",
+  "repo": "unsloth/SmolLM3-3B-GGUF",
+  "file": "SmolLM3-3B-Q4_K_M.gguf",
+  "revision": "a7bc17204c8a326d6bd6e466e076959eddae2025",
+  "sha256": "4de907d2d388a5508fb7cb443a06effe14cce3518b0a78d3bdd9e74d9edce989",
+  "size": 1915306528
+ },
+ {
+  "name": "smollm3-3b/SmolLM3-3B-Q8_0.gguf",
+  "repo": "unsloth/SmolLM3-3B-GGUF",
+  "file": "SmolLM3-3B-Q8_0.gguf",
+  "revision": "a7bc17204c8a326d6bd6e466e076959eddae2025",
+  "sha256": "5bd828e684d883459a03ce1eec9dc9044345c6da64075d9ae7e890dedc68de28",
+  "size": 3275575840
+ }
+]

@@ -1,0 +1,1 @@
+{"base": "gemma-3-1b/gemma-3-1b-it-Q8_0.gguf", "downgrade": "gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf", "swap": "gemma-3-270m/gemma-3-270m-it-Q8_0.gguf"}

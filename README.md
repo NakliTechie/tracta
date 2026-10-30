@@ -2,11 +2,11 @@
 
 <p align="center"><b>Checks you run yourself to see whether a model provider still serves the model it promised, and research on reading which parts of a model carry a behaviour.</b></p>
 
-<p align="center">Runs on your own machine, on CPU. No account, no server, no telemetry.</p>
+<p align="center">Runs on your own machine. No account, no server, no telemetry.</p>
 
 <p align="center">
   <img alt="status: research" src="https://img.shields.io/badge/status-research-52514e?style=flat-square">
-  <img alt="runs on: CPU" src="https://img.shields.io/badge/runs%20on-CPU-52514e?style=flat-square">
+  <img alt="models tested: 10" src="https://img.shields.io/badge/models%20tested-10-52514e?style=flat-square">
   <img alt="account: none" src="https://img.shields.io/badge/account-none-52514e?style=flat-square">
 </p>
 
@@ -15,60 +15,61 @@
 | Need | Command |
 |---|---|
 | llama.cpp (macOS, Linux) | `brew install llama.cpp` |
-| Python 3.12 packages | `pip install numpy scipy torch transformers matplotlib` |
-| Qwen3-0.6B weights | GGUF files at Q8_0, Q4_K_M and bf16, plus the Hugging Face `Qwen/Qwen3-0.6B` folder, in one directory |
+| Python 3.12 packages | `pip install numpy scipy torch transformers matplotlib "gguf>=0.19"` |
+| The pinned model files | `python experiments/drift-calibration/models.py fetch /path/to/models` |
 
-Run one calibration campaign. It starts `llama-server` on CPU for each arm, sends about 9,400 requests, and writes `runs.jsonl` and `results.json` to the folder you name:
+`models.py fetch` downloads the 24 published GGUF files listed in `models.json` at their pinned commits and checks every SHA-256. Then run one family: the provider serves a published Q8_0, and the script plants its published Q4_K_M and a swap.
 
 ```bash
-sh experiments/drift-calibration/campaign.sh /path/to/model-dir /path/to/work-dir
+sh experiments/drift-calibration/campaign_family.sh /path/to/models work/gemma-3-1b gemma-3-1b/gemma-3-1b-it-Q8_0.gguf gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf gemma-3-270m/gemma-3-270m-it-Q8_0.gguf
 ```
 
-On an M4 Pro, collection takes about 45 minutes and scoring about 6 minutes. The campaign uses no GPU and needs no API key, because the "provider" is a local server.
+It needs no GPU and no API key, because the "provider" is a local server. `TRACTA_DEVICE=MTL0` serves on Metal instead of CPU.
 
 ## Why
 
-You pay a provider for model X and see only its answers. On a busy day it can serve a quantised copy, a smaller sibling, or a mix, and the bill stays the same. A weight hash cannot help, because you never see the weights.
+You pay a provider for model X and see only its answers. On a busy day it can serve a 4-bit copy, a smaller sibling, or another model, and the bill stays the same. A weight hash cannot help, because you never see the weights.
 
-tracta samples the provider on normal days to build a baseline, then flags a later sample that moves further than the baseline moves against itself. It reports a detection rate and a false-alarm rate, never a guarantee. A provider that recognises probe traffic can serve the real model to the probes, so the probes have to look like ordinary use.
+tracta asks the provider fixed questions on days you trust, keeps the answers as your baseline, and later checks whether new answers still match. It reports a detection with a measured false-alarm rate, never proof. A provider that recognises probe traffic can serve the real model to the probes, so a released tool must make probes look like ordinary use.
 
 ## Results
 
-![The drift test fires on a full Q8_0 to Q4_K_M swap in 99% of 25-call checks and on the unchanged model in about 4%](experiments/drift-calibration/results/2026-10-29/b1-detection.png)
+![Per family, the share of 436 greedy answers that changed: unchanged reruns 0–0.5%, a second engine 10–15%, the published Q4_K_M 4.6–75%, a swapped model 45–97%](experiments/drift-calibration/results/2026-10-30/b2-families.png)
 
-On Qwen3-0.6B, a full swap from Q8_0 to Q4_K_M sets the test off in 99% of 25-call checks. Unchanged days set it off in 4%, close to the 5% the test allows. A swap on 30% of traffic needs about 200 calls; on 10% it does not show within 200. Reproduce with `python experiments/drift-calibration/plot.py experiments/drift-calibration/results/2026-10-29/results.json out.png`. Raw answers: [`runs.jsonl.gz`](experiments/drift-calibration/results/2026-10-29/runs.jsonl.gz).
+Across ten published models from 0.35B to 4B, a swap to the family's Q4_K_M changed 4.6–75% of 436 short greedy answers, and a swap to another model changed 45–97%. The same file served again changed 0–0.5%, and served by a second engine 10–15%. One case is unresolved: Qwen3.5-4B's Q4_K_M moved only 4.6%, and its second-engine noise was not measured. Reproduce with `python experiments/drift-calibration/plot_families.py experiments/drift-calibration/results/2026-10-30 out.png`. Raw answers: [`runs-families.jsonl.gz`](experiments/drift-calibration/results/2026-10-30/runs-families.jsonl.gz).
 
-## The three drift checks
+## The three checks
 
-- **Rank uniformity (B1).** For each prompt, the served answer's likelihood is ranked among 20 answers from your own copy of the published weights. Ranks are uniform when the model is unchanged and skew low after a downgrade. This check needs the weights to be open, and its false-alarm rate was measured with real sampling noise.
-- **Knowledge-boundary answers (B2).** Greedy answers to 436 short facts and sums. The swap changed 41% of answers; unchanged days changed none.
-- **Single-token fingerprint (F1).** First-token distributions on 40 one-word prompts, compared by Jensen-Shannon divergence. One prompt separated every pair of precisions, Q8_0 against bf16 included.
+- **Knowledge-boundary answers (B2).** Greedy answers to short facts and sums near the edge of what the model knows. It is the strongest check here: it separated every planted change from its null.
+- **Rank uniformity (B1).** Each new answer is ranked among your baseline answers to the same prompt, under one fixed small scorer model. Its false-alarm rate held at 0–8.8% across ten families. With a scorer from another family it catches cross-family swaps (85–100% at 25 prompts) but not quantisation or smaller siblings. With the served model as scorer it caught Q4_K_M 98.8–100% of the time.
+- **Single-token fingerprint (F1).** First-token distributions on 40 one-word prompts. It needs an API that returns log-probabilities, and a second engine in its null to mean anything.
 
-B2 and F1 ran against a local server that gave bit-identical outputs across seeds, thread counts and batching. Their false-alarm floor was therefore zero, and a hosted API will have one above zero. The next run serves the same file through a second engine to measure that floor.
+Per-family tables with exact intervals: [`report-small.md`](experiments/drift-calibration/results/2026-10-30/report-small.md) and [`report-4b.md`](experiments/drift-calibration/results/2026-10-30/report-4b.md).
 
 ## Also in this repo
 
-The project's wider question is which component of a model (a neuron, a direction, an expert) carries a behaviour. Two tracks are on paper and not yet run:
+The wider question is which component of a model (a neuron, a direction, an expert) carries a behaviour. Two tracks are on paper and not yet run:
 - tamper checks for runtime steering and abliteration;
 - expert-path attribution on existing open mixture-of-experts models, labelled by topic.
 
 ## Commands
 
 ```bash
-sh experiments/drift-calibration/campaign.sh MODEL_DIR WORK_DIR    # full campaign: collect, then analyse
-python experiments/drift-calibration/collect.py --model M --tag T --out R --log L   # one arm only
-python experiments/drift-calibration/analyse.py --runs R --scorer HF_DIR --out J    # B1, B2, F1 from a runs file
-python experiments/drift-calibration/plot.py J PNG                                  # the Results chart
+python experiments/drift-calibration/models.py fetch DIR                   # pinned published GGUFs, SHA-256 checked
+sh experiments/drift-calibration/campaign_family.sh DIR WORK BASE DOWN SWAP   # one family on llama-server
+python experiments/drift-calibration/collect_hf.py --model-dir D --gguf F --tag q8-hfday1 --sets boundary,tokens --out R   # second engine
+python experiments/drift-calibration/analyse.py --runs R... --scorer HF_DIR --out results.json   # B1, B2, F1
+python experiments/drift-calibration/report.py OUT.md WORK/*/results.json     # per-family table
 ```
 
 ## Verify it yourself
 
 ```bash
-sh experiments/drift-calibration/campaign.sh MODEL_DIR WORK_DIR
-python -c "import json; r=json.load(open('WORK_DIR/results.json'))['b1']['arms']; print({t: v['reject_rate_by_n']['25'] for t, v in r.items()})"
+python experiments/drift-calibration/models.py verify DIR
+python -c "import json; r=json.load(open('experiments/drift-calibration/results/2026-10-30/families/gemma-3-1b/results.json')); print({t: round(v['changed_all']['rate'], 3) for t, v in r['b2']['arms'].items()})"
 ```
 
-The unchanged arms (`q8-day1` to `q8-day3`) must fire in about 5% of 25-call checks, and the `q4-day` arms in nearly all of them. The 2026-10-29 campaign gave 3.6–4.9% and 98.1–99.7%. That campaign is one run of one model and one downgrade, with no repeat.
+`verify` fails unless every model file matches the hash in `models.json`, which is the published Hugging Face hash. The second command prints Gemma 3 1B's B2 shares: 0.0 for the same-engine reruns, 0.154 for the second engine, 0.555 for Q4_K_M and 0.968 for the swap. Analysis uses fixed seeds, so a rerun of `analyse.py` on the same answers gives the same numbers. Every result here is one campaign per family; no repeat campaigns ran.
 
 ## License
 

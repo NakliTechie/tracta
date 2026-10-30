@@ -10,6 +10,7 @@ CPU only (--device none, no op offload), so no GPU turn is needed.
 """
 import argparse
 import json
+import os
 import subprocess
 import time
 import urllib.request
@@ -19,28 +20,62 @@ from concurrent.futures import ThreadPoolExecutor
 import probes
 
 OPEN = dict(temperature=0.7, top_k=0, top_p=1.0, min_p=0.0, repeat_penalty=1.0, max_tokens=48)
-BOUNDARY = dict(temperature=0.0, max_tokens=16)
-TOKENS = dict(temperature=1.0, top_k=0, top_p=1.0, min_p=0.0, max_tokens=1, logprobs=True, top_logprobs=20)
+BOUNDARY = dict(temperature=0.0, repeat_penalty=1.0, max_tokens=16)
+TOKENS = dict(temperature=1.0, top_k=0, top_p=1.0, min_p=0.0, repeat_penalty=1.0, max_tokens=1, logprobs=True,
+              top_logprobs=20)
 
 
 def seed_for(base, pid, j):
     return zlib.crc32(f"{base}:{pid}:{j}".encode()) & 0x7FFFFFFF
 
 
+def pressure_level():
+    """macOS memory pressure: 1 normal, 2 warn, 4 critical. Swap use alone is no signal, because
+    macOS keeps swap allocated after the pressure has passed."""
+    return int(subprocess.run(["sysctl", "-n", "kern.memorystatus_vm_pressure_level"],
+                              capture_output=True, text=True).stdout.strip() or 1)
+
+
+def memory_gate(label, gate_log):
+    """Before a memory-heavy step, wait while memory pressure is critical (another session may
+    hold memory). Writes WAIT and GO lines to gate_log (gate.log beside the runs file) so the
+    supervising agent can ask the other session to pause. Proceeds after 60 minutes, logging it."""
+    def note(msg):
+        with open(gate_log, "a") as f:
+            f.write(f"{time.strftime('%H:%M')} {label} {msg}\n")
+    waited = 0
+    while pressure_level() >= 4 and waited < 3600:
+        if waited == 0:
+            note(f"WAIT pressure level {pressure_level()}")
+        time.sleep(60)
+        waited += 60
+    note(f"GO pressure level {pressure_level()} after {waited} s")
+
+
 def start_server(model, port, threads, parallel, log):
-    cmd = ["llama-server", "-m", model, "--device", "none", "-ngl", "0", "--no-op-offload",
+    # CPU by default, so no GPU turn is needed; TRACTA_DEVICE=MTL0 serves every layer on Metal instead.
+    device = os.environ.get("TRACTA_DEVICE", "none")
+    placement = ["--device", "none", "-ngl", "0", "--no-op-offload"] if device == "none" else ["--device", device, "-ngl", "999"]
+    cmd = ["llama-server", "-m", model, *placement,
            "--host", "127.0.0.1", "--port", str(port), "--jinja", "-c", str(2048 * parallel),
            "--parallel", str(parallel), "-t", str(threads)]
     proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(120):
+        if proc.poll() is not None:
+            raise RuntimeError("llama-server exited during startup (port in use?)")
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as r:
-                if json.load(r).get("status") == "ok":
-                    return proc
+                healthy = json.load(r).get("status") == "ok"
+            if healthy:
+                # A server already on this port also answers /health; confirm it is ours and serves this file.
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/props", timeout=5) as r:
+                    served = json.load(r).get("model_path", "")
+                if proc.poll() is not None or os.path.realpath(served) != os.path.realpath(model):
+                    proc.kill()
+                    raise RuntimeError(f"port {port} is served by another llama-server ({served})")
+                return proc
         except OSError:
             pass
-        if proc.poll() is not None:
-            raise RuntimeError("llama-server exited during startup")
         time.sleep(1)
     proc.kill()
     raise RuntimeError("llama-server did not become healthy")
@@ -51,8 +86,14 @@ def chat(port, prompt, params, seed):
                 chat_template_kwargs={"enable_thinking": False})
     req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions",
                                  data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)
+    # A shared, oversubscribed CPU can stall llama.cpp's spinning threads for minutes; wait long, retry once.
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(req, timeout=600) as r:
+                return json.load(r)
+        except TimeoutError:
+            if attempt == 2:
+                raise
 
 
 def jobs(sets, open_samples, seed_base):
@@ -69,15 +110,19 @@ def jobs(sets, open_samples, seed_base):
 
 
 def run(args):
+    memory_gate(args.tag, os.path.join(os.path.dirname(os.path.abspath(args.out)), "gate.log"))
     with open(args.log, "a") as log:
         server = start_server(args.model, args.port, args.threads, args.parallel, log)
     try:
         def one(job):
             kind, p, j, params, seed = job
+            t0 = time.time()
             d = chat(args.port, p["prompt"], params, seed)
             c = d["choices"][0]
             rec = dict(tag=args.tag, model=args.model, build=d.get("system_fingerprint"), set=kind,
-                       id=p["id"], j=j, seed=seed, prompt=p["prompt"], text=c["message"]["content"])
+                       id=p["id"], j=j, seed=seed, prompt=p["prompt"], text=c["message"]["content"],
+                       # Logged, not used: timings are not authoritative when the machine is shared.
+                       wall_s=round(time.time() - t0, 4), timings=d.get("timings"))
             if "answer" in p:
                 rec["answer"] = p["answer"]
             if kind == "tokens":
@@ -106,7 +151,7 @@ if __name__ == "__main__":
     ap.add_argument("--threads", type=int, default=8)
     ap.add_argument("--parallel", type=int, default=1)
     ap.add_argument("--concurrency", type=int, default=1)
-    ap.add_argument("--port", type=int, default=18731)
+    ap.add_argument("--port", type=int, default=int(os.environ.get("TRACTA_PORT", 18731)))
     ap.add_argument("--out", required=True)
     ap.add_argument("--log", required=True)
     a = ap.parse_args()

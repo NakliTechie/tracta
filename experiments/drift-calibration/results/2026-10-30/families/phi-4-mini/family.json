@@ -1,0 +1,1 @@
+{"base": "phi-4-mini/Phi-4-mini-instruct.Q8_0.gguf", "downgrade": "phi-4-mini/Phi-4-mini-instruct-Q4_K_M.gguf", "swap": "qwen3.5-4b/Qwen3.5-4B-Q8_0.gguf"}

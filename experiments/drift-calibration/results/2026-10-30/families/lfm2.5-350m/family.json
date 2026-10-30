@@ -1,0 +1,1 @@
+{"base": "lfm2.5-350m/LFM2.5-350M-Q8_0.gguf", "downgrade": "lfm2.5-350m/LFM2.5-350M-Q4_K_M.gguf", "swap": "smollm2-360m/SmolLM2-360M-Instruct-Q8_0.gguf"}

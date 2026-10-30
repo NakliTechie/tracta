@@ -1,0 +1,1 @@
+{"base": "llama-3.2-1b/Llama-3.2-1B-Instruct-Q8_0.gguf", "downgrade": "llama-3.2-1b/Llama-3.2-1B-Instruct-Q4_K_M.gguf", "swap": "qwen3-0.6b/Qwen3-0.6B-Q8_0.gguf"}

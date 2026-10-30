@@ -1,0 +1,14 @@
+{
+ "qwen3-0.6b": "unsloth/Qwen3-0.6B-GGUF",
+ "qwen3.5-0.8b": "unsloth/Qwen3.5-0.8B-GGUF",
+ "smollm2-360m": "unsloth/SmolLM2-360M-Instruct-GGUF",
+ "smollm2-1.7b": "unsloth/SmolLM2-1.7B-Instruct-GGUF",
+ "llama-3.2-1b": "unsloth/Llama-3.2-1B-Instruct-GGUF",
+ "gemma-3-1b": "unsloth/gemma-3-1b-it-GGUF",
+ "gemma-3-270m": "unsloth/gemma-3-270m-it-GGUF",
+ "lfm2.5-350m": "LiquidAI/LFM2.5-350M-GGUF",
+ "qwen3.5-4b": "unsloth/Qwen3.5-4B-GGUF",
+ "phi-4-mini": "unsloth/Phi-4-mini-instruct-GGUF",
+ "llama-3.2-3b": "unsloth/Llama-3.2-3B-Instruct-GGUF",
+ "smollm3-3b": "unsloth/SmolLM3-3B-GGUF"
+}

@@ -1,0 +1,1 @@
+{"base": "smollm2-1.7b/SmolLM2-1.7B-Instruct-Q8_0.gguf", "downgrade": "smollm2-1.7b/SmolLM2-1.7B-Instruct-Q4_K_M.gguf", "swap": "smollm2-360m/SmolLM2-360M-Instruct-Q8_0.gguf"}
