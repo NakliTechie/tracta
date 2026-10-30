@@ -1,0 +1,217 @@
+{
+ "one-baseline": {
+  "check_number": 1,
+  "items": 436,
+  "changed": 0,
+  "changed_rate": 0.0,
+  "changed_ci": [
+   0.0,
+   0.008425041423099243
+  ],
+  "alpha_total": 0.05,
+  "test_number": null,
+  "alpha_this_check": 0.0,
+  "alpha_spent": 0,
+  "baseline_runs": 1,
+  "examples": [],
+  "verdict": "no verdict",
+  "reason": "one baseline run cannot measure the provider's own noise; run `tracta baseline` again, ideally on another day"
+ },
+ "check-2": {
+  "check_number": 2,
+  "items": 436,
+  "changed": 0,
+  "changed_rate": 0.0,
+  "changed_ci": [
+   0.0,
+   0.008425041423099243
+  ],
+  "alpha_total": 0.05,
+  "test_number": 1,
+  "alpha_this_check": 0.03039635509270134,
+  "alpha_spent": 0.03039635509270134,
+  "baseline_runs": 2,
+  "examples": [],
+  "null_changed": 0,
+  "null_items": 436,
+  "null_rate": 0.0,
+  "null_ci": [
+   0.0,
+   0.008425041423099243
+  ],
+  "null_run": 2,
+  "only_check": 0,
+  "only_noise": 0,
+  "p_value": 1.0,
+  "verdict": "no change detected",
+  "fingerprint": {
+   "probes": 40,
+   "median_jsd_check": 0.0,
+   "median_jsd_noise": 0.0
+  }
+ },
+ "check-3": {
+  "check_number": 3,
+  "items": 436,
+  "changed": 243,
+  "changed_rate": 0.5573394495412844,
+  "changed_ci": [
+   0.5093139479900218,
+   0.6045817860056014
+  ],
+  "alpha_total": 0.05,
+  "test_number": 2,
+  "alpha_this_check": 0.007599088773175335,
+  "alpha_spent": 0.03799544386587667,
+  "baseline_runs": 2,
+  "examples": [
+   {
+    "id": "elem-name-006",
+    "prompt": "Which chemical element has atomic number 6? Answer with the name only.",
+    "baseline": "Oxygen",
+    "now": "Helium"
+   },
+   {
+    "id": "elem-name-009",
+    "prompt": "Which chemical element has atomic number 9? Answer with the name only.",
+    "baseline": "Helium",
+    "now": "Hydrogen"
+   },
+   {
+    "id": "elem-name-010",
+    "prompt": "Which chemical element has atomic number 10? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-013",
+    "prompt": "Which chemical element has atomic number 13? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Hydrogen"
+   },
+   {
+    "id": "elem-name-014",
+    "prompt": "Which chemical element has atomic number 14? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Oganesson\n"
+   },
+   {
+    "id": "elem-name-015",
+    "prompt": "Which chemical element has atomic number 15? Answer with the name only.",
+    "baseline": "Chromium",
+    "now": "Oganesson"
+   },
+   {
+    "id": "elem-name-018",
+    "prompt": "Which chemical element has atomic number 18? Answer with the name only.",
+    "baseline": "Oganesson",
+    "now": "Hydrogen"
+   },
+   {
+    "id": "elem-name-021",
+    "prompt": "Which chemical element has atomic number 21? Answer with the name only.",
+    "baseline": "Neon",
+    "now": "Sodium"
+   }
+  ],
+  "null_changed": 0,
+  "null_items": 436,
+  "null_rate": 0.0,
+  "null_ci": [
+   0.0,
+   0.008425041423099243
+  ],
+  "null_run": 2,
+  "only_check": 243,
+  "only_noise": 0,
+  "p_value": 7.074749280333369e-74,
+  "verdict": "changed",
+  "fingerprint": {
+   "probes": 40,
+   "median_jsd_check": 0.013691628127450976,
+   "median_jsd_noise": 0.0
+  }
+ },
+ "check-4": {
+  "check_number": 4,
+  "items": 436,
+  "changed": 423,
+  "changed_rate": 0.9701834862385321,
+  "changed_ci": [
+   0.9495525179148028,
+   0.9840304131112518
+  ],
+  "alpha_total": 0.05,
+  "test_number": 3,
+  "alpha_this_check": 0.0033773727880779263,
+  "alpha_spent": 0.0413728166539546,
+  "baseline_runs": 2,
+  "examples": [
+   {
+    "id": "elem-name-006",
+    "prompt": "Which chemical element has atomic number 6? Answer with the name only.",
+    "baseline": "Oxygen",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-009",
+    "prompt": "Which chemical element has atomic number 9? Answer with the name only.",
+    "baseline": "Helium",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-010",
+    "prompt": "Which chemical element has atomic number 10? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-011",
+    "prompt": "Which chemical element has atomic number 11? Answer with the name only.",
+    "baseline": "Sodium",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-012",
+    "prompt": "Which chemical element has atomic number 12? Answer with the name only.",
+    "baseline": "Oxygen",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-013",
+    "prompt": "Which chemical element has atomic number 13? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-014",
+    "prompt": "Which chemical element has atomic number 14? Answer with the name only.",
+    "baseline": "Carbon",
+    "now": "Hydrogen\n"
+   },
+   {
+    "id": "elem-name-015",
+    "prompt": "Which chemical element has atomic number 15? Answer with the name only.",
+    "baseline": "Chromium",
+    "now": "Hydrogen\n"
+   }
+  ],
+  "null_changed": 0,
+  "null_items": 436,
+  "null_rate": 0.0,
+  "null_ci": [
+   0.0,
+   0.008425041423099243
+  ],
+  "null_run": 2,
+  "only_check": 423,
+  "only_noise": 0,
+  "p_value": 4.616489308892868e-128,
+  "verdict": "changed",
+  "fingerprint": {
+   "probes": 40,
+   "median_jsd_check": 0.594534703437634,
+   "median_jsd_noise": 0.0
+  }
+ }
+}

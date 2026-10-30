@@ -3,6 +3,7 @@
 # Baseline twice on the Q8_0, then check the Q8_0 (expect no change), its published Q4_K_M and a
 # smaller sibling (expect changed). CPU only.
 #   sh tests/e2e_local.sh <models-dir> <work-dir> [base] [downgrade] [swap]
+# TRACTA_BIN selects the tool under test (default: the Python package; e.g. TRACTA_BIN=dist/tracta for the Go binary).
 set -u
 M=$1; W=$2
 BASE=${3:-gemma-3-1b/gemma-3-1b-it-Q8_0.gguf}; DOWN=${4:-gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf}; SWAP=${5:-gemma-3-270m/gemma-3-270m-it-Q8_0.gguf}
@@ -15,7 +16,11 @@ serve() {
   until curl -s 127.0.0.1:$PORT/health | grep -q ok; do kill -0 $SP 2>/dev/null || { echo "server failed: $1" >&2; exit 1; }; sleep 1; done
 }
 stop() { kill $SP; wait $SP 2>/dev/null; }
-t() { (cd "$HERE" && python3 -m tracta --root "$ROOT" "$@"); }
+t() {
+  sub=$1; shift
+  if [ -n "${TRACTA_BIN:-}" ]; then (cd "$HERE" && "$TRACTA_BIN" "$sub" --root "$ROOT" "$@")
+  else (cd "$HERE" && python3 -m tracta --root "$ROOT" "$sub" "$@"); fi
+}
 fail=0
 expect() { # expect <exit code> <label> -- tracta args
   want=$1; label=$2; shift 3; t "$@"; got=$?

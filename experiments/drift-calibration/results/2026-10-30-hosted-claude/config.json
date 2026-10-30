@@ -1,0 +1,15 @@
+{
+ "name": "claude",
+ "api": "anthropic",
+ "endpoint": "https://api.anthropic.com",
+ "model": "claude-haiku-5-5",
+ "key_env": "ANTHROPIC_API_KEY",
+ "extra_body": {
+  "thinking": {
+   "type": "disabled"
+  }
+ },
+ "seed": 11550446496288297004,
+ "generator": "go-pcg-v1",
+ "created": "2026-10-30T06:55:44+0530"
+}

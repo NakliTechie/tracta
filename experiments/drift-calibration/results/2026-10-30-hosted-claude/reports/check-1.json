@@ -1,0 +1,29 @@
+{
+ "check_number": 1,
+ "test_number": 1,
+ "items": 436,
+ "changed": 0,
+ "changed_rate": 0,
+ "changed_ci": [
+  0,
+  0.008425041423099192
+ ],
+ "alpha_total": 0.05,
+ "alpha_this_check": 0.03039635509270134,
+ "alpha_spent": 0.03039635509270134,
+ "baseline_runs": 2,
+ "examples": [],
+ "verdict": "no change detected",
+ "null_changed": 0,
+ "null_items": 436,
+ "null_rate": 0,
+ "null_ci": [
+  0,
+  0.008425041423099192
+ ],
+ "null_run": 2,
+ "only_check": 0,
+ "only_noise": 0,
+ "p_value": 1,
+ "fingerprint": null
+}
