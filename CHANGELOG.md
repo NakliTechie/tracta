@@ -2,6 +2,11 @@
 
 All notable changes to tracta. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- The Windows amd64 binary of 0.2.0 passed the four end-to-end cases on a Windows laptop, against a llama-server on another machine: one baseline gives no verdict, an unchanged model gives exit 0, a published Q4_K_M quant and a swap to gemma-3-270m give exit 2. The Linux and Intel macOS builds remain untested.
+
 ## [0.2.0] — 2026-10-30
 
 First public release.
