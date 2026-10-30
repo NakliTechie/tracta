@@ -1,6 +1,6 @@
 """Fixed probe sets for the drift and fingerprint calibration.
 
-Three sets, one per hypothesis in plan/research/2026-10-27-detection-hypotheses.md:
+Three sets, one per statistic:
   open_prompts()     B1, rank-uniformity drift: short open-ended prompts, sampled answers
   boundary_prompts() B2, knowledge-boundary drift: short-answer facts and sums, greedy answers
   token_probes()     F1, single-token fingerprint: one-token answers, top log-probabilities

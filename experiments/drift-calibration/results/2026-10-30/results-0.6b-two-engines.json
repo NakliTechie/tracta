@@ -1,8 +1,8 @@
 {
  "inputs": [
-  "results/2026-10-29/runs.jsonl.gz",
-  "/private/tmp/claude-501/-Users-chiragpatnaik-Code-tracta/2901713b-c0e9-4bbf-81bf-94e46197ec86/scratchpad/engine2/runs-engine2.jsonl",
-  "/private/tmp/claude-501/-Users-chiragpatnaik-Code-tracta/2901713b-c0e9-4bbf-81bf-94e46197ec86/scratchpad/audits/runs-audits.jsonl"
+  "runs.jsonl.gz",
+  "runs-engine2.jsonl",
+  "runs-audits.jsonl"
  ],
  "b2": {
   "baseline": "q8-day1",

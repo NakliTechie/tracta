@@ -1,6 +1,6 @@
 {
  "inputs": [
-  "/private/tmp/claude-501/-Users-chiragpatnaik-Code-tracta/2901713b-c0e9-4bbf-81bf-94e46197ec86/scratchpad/families/qwen3.5-0.8b//runs.jsonl"
+  "runs-families.jsonl.gz (family qwen3.5-0.8b)"
  ],
  "b2": {
   "baseline": "q8-day1",

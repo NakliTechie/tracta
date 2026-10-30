@@ -1,6 +1,6 @@
 # Drift and fingerprint checks (B1, B2, F1)
 
-Measures whether three statistics can tell a served model from a planted change (its published Q4_K_M, or a swap to another model) better than the model differs from itself. Hypotheses: `plan/research/2026-10-27-detection-hypotheses.md` §6–7. Latest results: `results/2026-10-30/` (ten published families) and `plan/research/2026-10-30-drift-families/results.md`.
+Measures whether three statistics can tell a served model from a planted change (its published Q4_K_M, or a swap to another model) better than the model differs from itself. Latest results: `results/2026-10-30/` (ten published families) and `results/2026-10-30-hosted-claude/` (the Claude API test).
 
 ## Files
 
@@ -8,7 +8,7 @@ Measures whether three statistics can tell a served model from a planted change 
 - `models.py`, `models.json`, `model-repos.json`: every model file pinned by repo, commit and SHA-256; `fetch` downloads and checks them, `verify` checks a local copy.
 - `collect.py`: starts `llama-server` for one arm (CPU by default, `TRACTA_DEVICE=MTL0` for Metal, `TRACTA_PORT` for the port), refuses a port served by another model, waits at critical memory pressure, and appends every answer with its timings to one JSONL file.
 - `collect_hf.py`: the second engine. The same GGUF run by transformers on CPU in float32, with prompt token IDs from llama-server and llama.cpp's end-of-generation tokens.
-- `analyse.py`: B1 over fresh disjoint audits, B2 with exact intervals, F1 equal error rate per change. Fixed seeds per statistic; scores cached by scorer and content.
+- `analyse.py`: B1 over fresh disjoint audits, B2 with exact intervals, F1 minimax error rate per change (the larger of false-positive and false-negative rate at the best threshold; optimistic, because it is tuned and scored on the same resamples). Fixed seeds per statistic; scores cached by scorer and content.
 - `campaign_family.sh`: one family (baseline bank, unchanged audits, downgrade, swap, boundary and token probes). `families-small.sh` and `families-4b.sh` list the ten families tested.
 - `report.py`, `plot_families.py`: the per-family table and the README chart.
 - `campaign.sh`, `campaign_engine2.sh`, `campaign_audits.sh`, `plot.py`: the first Qwen3-0.6B calibration (results under `results/2026-10-29/`, superseded).

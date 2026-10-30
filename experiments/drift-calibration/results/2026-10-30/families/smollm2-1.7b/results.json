@@ -1,7 +1,7 @@
 {
  "inputs": [
-  "/private/tmp/claude-501/-Users-chiragpatnaik-Code-tracta/2901713b-c0e9-4bbf-81bf-94e46197ec86/scratchpad/families/smollm2-1.7b//runs.jsonl",
-  "/private/tmp/claude-501/-Users-chiragpatnaik-Code-tracta/2901713b-c0e9-4bbf-81bf-94e46197ec86/scratchpad/families/smollm2-1.7b//runs-engine2.jsonl"
+  "runs-families.jsonl.gz (family smollm2-1.7b)",
+  "runs-families.jsonl.gz (family smollm2-1.7b)"
  ],
  "b2": {
   "baseline": "q8-day1",
