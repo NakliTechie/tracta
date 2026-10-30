@@ -2,8 +2,10 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -48,12 +50,51 @@ var TokenProbes = []string{
 
 // Item is one question with its correct answer.
 type Item struct {
-	ID, Prompt, Answer string
+	ID     string `json:"id"`
+	Prompt string `json:"prompt"`
+	Answer string `json:"answer,omitempty"`
 }
 
 // Generator names the question generator stored with a watch, so a watch is never read by a
 // generator that would produce a different list.
 const Generator = "go-pcg-v1"
+
+// QuestionsFile is the generator of a watch whose questions came from the user's own file; the
+// watch keeps a copy in questions.json, so later edits to that file do not change the watch.
+const QuestionsFile = "file-v1"
+
+// ReadQuestions reads a JSON Lines file with one {"id": ..., "prompt": ...} object per line, in the
+// order they are asked. An "answer" field is allowed and ignored: a check compares answers between
+// runs, never with a correct answer.
+func ReadQuestions(path string) ([]Item, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var items []Item
+	seen := map[string]bool{}
+	for n, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var it Item
+		if err := json.Unmarshal([]byte(line), &it); err != nil {
+			return nil, fmt.Errorf("%s line %d: %w", path, n+1, err)
+		}
+		if it.ID == "" || strings.TrimSpace(it.Prompt) == "" {
+			return nil, fmt.Errorf("%s line %d: every question needs an \"id\" and a \"prompt\"", path, n+1)
+		}
+		if seen[it.ID] {
+			return nil, fmt.Errorf("%s line %d: id %q appears twice", path, n+1, it.ID)
+		}
+		seen[it.ID] = true
+		items = append(items, it)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("%s: no questions", path)
+	}
+	return items, nil
+}
 
 // BoundaryItems returns 436 items: atomic numbers both ways and 200 seeded three-digit x two-digit
 // products, in seeded order.

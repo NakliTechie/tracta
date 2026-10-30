@@ -28,7 +28,7 @@ func fail(format string, a ...any) {
 func usage() {
 	fmt.Fprint(os.Stderr, `tracta: check whether a model provider still serves the model it promised.
 
-  tracta baseline --name N --endpoint URL --model M [--api openai|anthropic] [--key-env VAR] [--extra-body JSON]
+  tracta baseline --name N --endpoint URL --model M [--api openai|anthropic] [--key-env VAR] [--extra-body JSON] [--questions FILE]
   tracta baseline --name N          record another baseline, ideally on another day
   tracta check --name N             compare with the baselines and write a report
   tracta status --name N            show a watch
@@ -100,7 +100,8 @@ func baseline(args []string) {
 	api := fs.String("api", "", "openai (any OpenAI-compatible endpoint) or anthropic (default: anthropic for api.anthropic.com, else openai)")
 	keyEnv := fs.String("key-env", "", "environment variable holding the API key (first run)")
 	extra := fs.String("extra-body", "", "JSON object merged into every request (first run)")
-	items := fs.Int("items", 0, "use only the first N questions (default all 436)")
+	items := fs.Int("items", 0, "use only the first N questions (default all)")
+	questions := fs.String("questions", "", "JSON Lines file of your own questions, {\"id\":...,\"prompt\":...} per line (first run)")
 	logprobs := fs.Bool("logprobs", false, "also record the fingerprint probes (needs top_logprobs)")
 	rps := fs.Float64("rps", 2, "requests per second (0 for no limit)")
 	fs.Parse(args)
@@ -121,14 +122,25 @@ func baseline(args []string) {
 				kind = "anthropic"
 			}
 		}
-		if c, err = s.Create(kind, *endpoint, *model, *keyEnv, parseExtra(*extra)); err != nil {
+		var own []core.Item
+		if *questions != "" {
+			if own, err = core.ReadQuestions(*questions); err != nil {
+				fail("%v", err)
+			}
+		}
+		if c, err = s.Create(kind, *endpoint, *model, *keyEnv, parseExtra(*extra), own); err != nil {
 			fail("%v", err)
 		}
 		fmt.Printf("created watch %q in %s\n", *name, s.Dir)
+	} else if *questions != "" {
+		fail("watch %q already has its questions: give --questions only when creating a watch", *name)
 	} else if c, err = s.Config(); err != nil {
 		fail("%v", err)
 	}
-	qs := core.BoundaryItems(c.Seed)
+	qs, err := s.Items(c)
+	if err != nil {
+		fail("%v", err)
+	}
 	if *items > 0 && *items < len(qs) {
 		qs = qs[:*items]
 	}
@@ -171,8 +183,12 @@ func check(args []string) {
 	if err != nil || len(baselines) == 0 {
 		fail("no baseline runs yet: run `tracta baseline` first")
 	}
+	all, err := s.Items(c)
+	if err != nil {
+		fail("%v", err)
+	}
 	var qs []core.Item
-	for _, it := range core.BoundaryItems(c.Seed) {
+	for _, it := range all {
 		if _, ok := baselines[0].Answers[it.ID]; ok {
 			qs = append(qs, it)
 		}
@@ -231,8 +247,13 @@ func status(args []string) {
 	}
 	b, _ := s.Runs("baseline")
 	k, _ := s.Runs("check")
+	qs, _ := s.Items(c)
+	source := "built-in"
+	if c.Generator == core.QuestionsFile {
+		source = "your file"
+	}
 	out, _ := json.MarshalIndent(map[string]any{"name": c.Name, "api": c.API, "endpoint": c.Endpoint, "model": c.Model,
-		"baselines": len(b), "checks": len(k), "folder": s.Dir}, "", " ")
+		"questions": len(qs), "question_source": source, "baselines": len(b), "checks": len(k), "folder": s.Dir}, "", " ")
 	fmt.Println(string(out))
 }
 

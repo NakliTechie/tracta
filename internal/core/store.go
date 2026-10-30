@@ -50,7 +50,11 @@ func (s Store) Exists() bool {
 
 func now() string { return time.Now().Format("2006-01-02T15:04:05-0700") }
 
-func (s Store) Create(api, endpoint, model, keyEnv string, extra map[string]any) (Config, error) {
+func (s Store) questionsPath() string { return filepath.Join(s.Dir, "questions.json") }
+
+// Create makes a new watch. With questions nil it uses the built-in seeded set; otherwise it keeps
+// a copy of the given questions.
+func (s Store) Create(api, endpoint, model, keyEnv string, extra map[string]any, questions []Item) (Config, error) {
 	for _, d := range []string{"runs", "reports"} {
 		if err := os.MkdirAll(filepath.Join(s.Dir, d), 0o755); err != nil {
 			return Config{}, err
@@ -65,7 +69,26 @@ func (s Store) Create(api, endpoint, model, keyEnv string, extra map[string]any)
 	}
 	c := Config{Name: s.Name, API: api, Endpoint: endpoint, Model: model, KeyEnv: keyEnv, ExtraBody: extra,
 		Seed: binary.LittleEndian.Uint64(b[:]), Generator: Generator, Created: now()}
+	if questions != nil {
+		c.Generator = QuestionsFile
+		if err := writeJSON(s.questionsPath(), questions); err != nil {
+			return c, err
+		}
+	}
 	return c, writeJSON(s.configPath(), c)
+}
+
+// Items returns the watch's questions in the order they are asked.
+func (s Store) Items(c Config) ([]Item, error) {
+	if c.Generator != QuestionsFile {
+		return BoundaryItems(c.Seed), nil
+	}
+	var items []Item
+	data, err := os.ReadFile(s.questionsPath())
+	if err != nil {
+		return nil, err
+	}
+	return items, json.Unmarshal(data, &items)
 }
 
 func (s Store) Config() (Config, error) {
@@ -77,7 +100,7 @@ func (s Store) Config() (Config, error) {
 	if err := json.Unmarshal(data, &c); err != nil {
 		return c, err
 	}
-	if c.Generator != Generator {
+	if c.Generator != Generator && c.Generator != QuestionsFile {
 		return c, fmt.Errorf("watch %q was made by another question generator (%q); start a new watch", s.Name, c.Generator)
 	}
 	return c, nil

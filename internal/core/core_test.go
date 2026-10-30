@@ -132,3 +132,31 @@ func TestQuestions(t *testing.T) {
 		}
 	}
 }
+
+func TestOwnQuestions(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "q.jsonl")
+	os.WriteFile(path, []byte("{\"id\":\"a\",\"prompt\":\"What is 2+2?\",\"answer\":\"4\"}\n\n{\"id\":\"b\",\"prompt\":\"Capital of Peru?\"}\n"), 0o644)
+	items, err := ReadQuestions(path)
+	if err != nil || len(items) != 2 || items[1].ID != "b" {
+		t.Fatalf("ReadQuestions = %v, %v", items, err)
+	}
+	s := NewStore(dir, "w")
+	c, err := s.Create("openai", "http://x/v1", "m", "", nil, items)
+	if err != nil || c.Generator != QuestionsFile {
+		t.Fatalf("Create = %+v, %v", c, err)
+	}
+	if c, err = s.Config(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Items(c)
+	if err != nil || len(got) != 2 || got[0] != items[0] {
+		t.Fatalf("Items = %v, %v", got, err)
+	}
+	for _, bad := range []string{"{\"id\":\"a\",\"prompt\":\"x\"}\n{\"id\":\"a\",\"prompt\":\"y\"}\n", "{\"prompt\":\"x\"}\n", "not json\n", "\n"} {
+		os.WriteFile(path, []byte(bad), 0o644)
+		if _, err := ReadQuestions(path); err == nil {
+			t.Errorf("ReadQuestions accepted %q", bad)
+		}
+	}
+}

@@ -62,6 +62,10 @@ func Markdown(c Config, r Result, checkModel string) string {
 		b.WriteString("\n")
 	}
 	b.WriteString("## How to read this\n\n" + evidence + "\n\n")
+	if c.Generator == QuestionsFile {
+		b.WriteString("This watch asks your own questions, so the figures above, measured on tracta's built-in questions, " +
+			"do not describe it. The test and the false-alarm budget are the same.\n\n")
+	}
 	for _, l := range limits {
 		b.WriteString("- " + l + "\n")
 	}

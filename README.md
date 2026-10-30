@@ -55,10 +55,20 @@ Check number k may spend α·6/(π²k²) of a total false-alarm budget α, 0.05 
 - **Changes that spare short factual answers.** These are invisible, including a swap between two strong models that both know the answers.
 - **Changes before your first baseline.** tracta compares only with your own baselines.
 
+## Your own questions
+
+The built-in set is 436 questions: atomic numbers both ways, and 200 multiplications drawn from a private seed. To ask your own instead, give a JSON Lines file when you create the watch, one question per line ([example](docs/questions-example.jsonl)). This option is newer than v0.2.0: until the next release, build from main with `go install github.com/NakliTechie/tracta/cmd/tracta@main`.
+
+```bash
+tracta baseline --name myprovider --endpoint URL --model M --questions my-questions.jsonl
+```
+
+Each line needs an `id` and a `prompt`; an `answer` is allowed and ignored, because a check compares runs with each other, never with a correct answer. The watch keeps its own copy, so later baselines and checks ask the same list. Ask for short answers: tracta reads at most 16 tokens and compares the first number, else the first word. Harder questions near the edge of what your model knows give more power against strong models, where the built-in set has little margin. The results above were measured on the built-in set only. The Python reference version has only the built-in set.
+
 ## Commands
 
 ```bash
-tracta baseline --name N --endpoint URL --model M [--api openai|anthropic] [--key-env VAR] [--extra-body JSON] [--logprobs]
+tracta baseline --name N --endpoint URL --model M [--api openai|anthropic] [--key-env VAR] [--extra-body JSON] [--questions FILE] [--logprobs]
 tracta check --name N [--alpha 0.05] [--model M]   # --model calls another model, to test the check with a swap
 tracta status --name N
 tracta version
@@ -74,7 +84,7 @@ python3 -m unittest discover -s tests
 TRACTA_BIN=dist/tracta sh tests/e2e_local.sh /path/to/models /tmp/tracta-e2e
 ```
 
-The Go tests replay stored runs and require the same verdicts, counts and p-values as the Python reference version. The Python tests check the statistics against SciPy. The end-to-end script drives the real binary against local llama-server providers built from the pinned files in `experiments/drift-calibration/models.json`. It expects no verdict from one baseline, no change on the unchanged Q8_0, and "changed" for the published Q4_K_M and for a swap. The macOS arm64 binary passed it; the other platform builds have not been run.
+The Go tests replay stored runs and require the same verdicts, counts and p-values as the Python reference version. The Python tests check the statistics against SciPy. The end-to-end script drives the real binary against local llama-server providers built from the pinned files in `experiments/drift-calibration/models.json`. It expects no verdict from one baseline, no change on the unchanged Q8_0, and "changed" for the published Q4_K_M and for a swap. The macOS arm64 binary passed it, and the Windows amd64 binary passed the same four cases against a server on another machine. The Linux and Intel macOS builds have not been run.
 
 ## Research behind it
 

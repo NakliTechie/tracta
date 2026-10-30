@@ -4,6 +4,9 @@ All notable changes to tracta. Format: [Keep a Changelog](https://keepachangelog
 
 ## [Unreleased]
 
+### Added
+- `tracta baseline --questions FILE` creates a watch that asks your own questions from a JSON Lines file (`{"id", "prompt"}` per line; see `docs/questions-example.jsonl`) instead of the built-in 436. The watch keeps a copy in `questions.json`, `status` shows the question count and source, and the report says the built-in evidence figures do not apply. Go binary only.
+
 ### Changed
 - The Windows amd64 binary of 0.2.0 passed the four end-to-end cases on a Windows laptop, against a llama-server on another machine: one baseline gives no verdict, an unchanged model gives exit 0, a published Q4_K_M quant and a swap to gemma-3-270m give exit 2. The Linux and Intel macOS builds remain untested.
 
