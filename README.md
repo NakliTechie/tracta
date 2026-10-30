@@ -57,7 +57,7 @@ Check number k may spend α·6/(π²k²) of a total false-alarm budget α, 0.05 
 
 ## Your own questions
 
-The built-in set is 436 questions: atomic numbers both ways, and 200 multiplications drawn from a private seed. To ask your own instead, give a JSON Lines file when you create the watch, one question per line ([example](docs/questions-example.jsonl)). This option is newer than v0.2.0: until the next release, build from main with `go install github.com/NakliTechie/tracta/cmd/tracta@main`.
+The built-in set is 436 questions: atomic numbers both ways, and 200 multiplications drawn from a private seed. To ask your own instead, give a JSON Lines file when you create the watch, one question per line ([example](docs/questions-example.jsonl)). It needs v0.3.0 or later.
 
 ```bash
 tracta baseline --name myprovider --endpoint URL --model M --questions my-questions.jsonl

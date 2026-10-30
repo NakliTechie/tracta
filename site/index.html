@@ -114,7 +114,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule);
     <nav class="top"><a class="brand" href="/">tracta</a><div class="links"><a href="https://github.com/NakliTechie/tracta">GitHub</a><a href="https://github.com/NakliTechie/tracta/releases/latest">Download</a><a href="https://github.com/NakliTechie/tracta#readme">README</a><a href="https://github.com/NakliTechie/tracta/blob/main/CHANGELOG.md">Changelog</a></div></nav>
     <h1>How to tell whether your AI provider swapped the model</h1>
     <p class="lede">You pay for one model and can only see its answers. tracta asks it the same short questions on different days and tells you, with a stated chance of a false alarm, when the answers have changed more than the provider's normal wobble.</p>
-    <div class="btns"><a class="btn primary" href="https://github.com/NakliTechie/tracta/releases/latest">Download v0.2.0 from GitHub</a><a class="btn secondary" href="https://github.com/NakliTechie/tracta">Source and documentation</a></div>
+    <div class="btns"><a class="btn primary" href="https://github.com/NakliTechie/tracta/releases/latest">Download v0.3.0 from GitHub</a><a class="btn secondary" href="https://github.com/NakliTechie/tracta">Source and documentation</a></div>
   </header>
 
   <section>
@@ -259,6 +259,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule);
 tracta baseline --name myprovider     # again, ideally on another day
 tracta check --name myprovider        # writes a report; exit 0 no change, 2 changed, 3 no verdict</pre></div>
     <p>tracta is one program with no account and no server, for macOS, Linux and Windows, under the MIT licence. It works with any provider that speaks the common OpenAI chat format, and with the Claude API. Each check writes a report with the verdict, the numbers behind it and the questions whose answers moved (<a href="https://github.com/NakliTechie/tracta/blob/main/docs/example-report.md">an example report</a>).</p>
+    <p>The built-in questions are 436 atomic-number and multiplication questions, drawn from a private seed for each watch. You can ask your own instead: give <code>--questions my-questions.jsonl</code> when you create a watch, with one <code>{"id", "prompt"}</code> per line (<a href="https://github.com/NakliTechie/tracta/blob/main/docs/questions-example.jsonl">an example file</a>). Harder questions near the edge of what your model knows give a check more power against strong models.</p>
     <p>Download the binary for your platform from the <a href="https://github.com/NakliTechie/tracta/releases/latest">latest GitHub release</a> and check it against <code>SHA256SUMS</code>, or build it with <code>go install github.com/NakliTechie/tracta/cmd/tracta@latest</code>. The source, the method and every experiment, with the pinned model files, are in the <a href="https://github.com/NakliTechie/tracta">repository</a>.</p>
   </section>
 
@@ -274,7 +275,7 @@ tracta check --name myprovider        # writes a report; exit 0 no change, 2 cha
       <dt>false alarm</dt><dd>A "changed" verdict when the provider did not change anything.</dd>
     </dl>
   </section>
-  <footer><span>tracta v0.2.0 · MIT</span><a href="https://github.com/NakliTechie/tracta">github.com/NakliTechie/tracta</a><span>A <a href="https://naklitechie.com">NakliTechie</a> project</span><span>This page sets no cookies and runs no analytics.</span></footer>
+  <footer><span>tracta v0.3.0 · MIT</span><a href="https://github.com/NakliTechie/tracta">github.com/NakliTechie/tracta</a><span>A <a href="https://naklitechie.com">NakliTechie</a> project</span><span>This page sets no cookies and runs no analytics.</span></footer>
 </div>
 
 <script>

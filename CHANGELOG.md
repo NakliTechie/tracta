@@ -2,7 +2,7 @@
 
 All notable changes to tracta. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] — 2026-10-30
 
 ### Added
 - `tracta baseline --questions FILE` creates a watch that asks your own questions from a JSON Lines file (`{"id", "prompt"}` per line; see `docs/questions-example.jsonl`) instead of the built-in 436. The watch keeps a copy in `questions.json`, `status` shows the question count and source, and the report says the built-in evidence figures do not apply. Go binary only.

@@ -18,7 +18,7 @@ import (
 	"github.com/NakliTechie/tracta/internal/provider"
 )
 
-var version = "0.2.0"
+var version = "0.3.0"
 
 func fail(format string, a ...any) {
 	fmt.Fprintf(os.Stderr, "tracta: "+format+"\n", a...)
